@@ -1,0 +1,39 @@
+{
+  "name": "crumbsdb",
+  "version": "1.0.0",
+  "description": "A back-end is very inefficient and causes delay. Store your data in cookies instead.",
+  "main": "index.js",
+  "scripts": {
+    "compile": "webpack ./index.js dist/crumbs.js",
+    "compile:watch": "webpack --watch ./index.js dist/crumbs.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/michaelgira23/crumbsDB.git"
+  },
+  "keywords": [
+    "crumbsdb",
+    "crumbs",
+    "cookies"
+  ],
+  "author": "Michael Gira",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/michaelgira23/crumbsDB/issues"
+  },
+  "homepage": "https://github.com/michaelgira23/crumbsDB#readme",
+  "dependencies": {
+    "jquery": "^3.2.1",
+    "js-cookie": "^2.1.4",
+    "node-sql-parser": "0.0.1",
+    "node-sqlparser": "^1.0.2",
+    "simple-sql-parser": "^2.0.0-alpha.1",
+    "sql-parser": "^0.5.0",
+    "sqljs": "git://github.com/langpavel/node-sqljs.git"
+  },
+  "devDependencies": {
+    "bootstrap": "^4.0.0-alpha.6",
+    "webpack": "^2.6.1"
+  }
+}
