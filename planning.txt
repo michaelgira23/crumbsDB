@@ -1,0 +1,51 @@
+Type
+{
+	isValid: function
+	serialize: function
+	unserialize: function
+}
+
+How Crumbs is Stored
+
+Stringify
+{
+	table: {
+		columns: [
+			{ // type
+				type: string
+				isValid: function,
+				serialize: function,
+				unserialize: function
+			},
+			{ ... }
+		],
+		rows: [
+			[
+				"serialized value column 1",
+				"serialized value column 2",
+				...
+			],
+			[
+				...
+			]
+		]
+	}
+}
+
+[crumbsDB 1.0.0]
+{BEGIN_TABLE:421}
+	{BEGIN_COLUMNS:123}[string]number]{END_COLUMNS}
+	{BEGIN_ROWS:123}
+		{BEGIN_ROW:10}
+			{BEGIN_VALUE:5}serializedValue{END_VALUE}
+			{BEGIN_VALUE:5}serializedValue{END_VALUE}
+		{END_ROW}
+		{BEGIN_ROW:10}[serializedValue][serializedValue]{END_ROW}
+	{END_ROWS}
+{END_TABLE}
+{BEGIN_TABLE:42023}
+	...
+{END_TABLE}
+
+In cookie "crumbs"
+[crumbsDB 1.0.0]{BEGIN_TABLE:420}{BEGIN_COLUMNS:123}[string][number]{END_COLUMNS}{BEGIN_ROWS:123}{BEGIN_ROW:10}[serializedValue][serializedValue]{END_ROW}{BEGIN_ROW:10}[serializedValue][serializedValue]{END_ROW}{END_ROWS}{BEGIN_TABLE:42023}{END_TABLE}
