@@ -5,13 +5,14 @@ Type
 	unserialize: function
 }
 
-How Crumbs is Stored
+How Crumbs Stores Data
 
 Stringify
 {
 	table: {
 		columns: [
 			{ // type
+				name: string,
 				type: string
 				isValid: function,
 				serialize: function,
@@ -38,7 +39,7 @@ Stringify
 	{BEGIN_ROWS:123}
 		{BEGIN_ROW:10}
 			{BEGIN_VALUE:5}serializedValue{END_VALUE}
-			{BEGIN_VALUE:5}serializedValue{END_VALUE}
+			{BEGIN_VALUE:7}serializedValue{END_VALUE}
 		{END_ROW}
 		{BEGIN_ROW:10}[serializedValue][serializedValue]{END_ROW}
 	{END_ROWS}

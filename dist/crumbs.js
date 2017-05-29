@@ -63,40 +63,100 @@
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 1);
+/******/ 	return __webpack_require__(__webpack_require__.s = 2);
 /******/ })
 /************************************************************************/
 /******/ ([
 /* 0 */
-/***/ (function(module, exports) {
+/***/ (function(module, exports, __webpack_require__) {
+
+const types = __webpack_require__(3);
 
 module.exports = class Table {
 
 	constructor(options) {
 		options = options || {};
-		this.columns = options.columns || 0;
+		this.name = options.name || 'UNNAMED_TABLE';
+		this.columns = options.columns || [];
+		this._rows = [];
+	}
+
+	get rows() {
+		return this._rows;
+	}
+
+	set rows(value) {
+		this._rows = value;
+		// @TODO: Do some logic and rewrite data into cookie
+	}
+
+	query() {
+
+	}
+
+	getFormattedObject() {
+		return {
+			columns: this.columns,
+			rows: this.rows
+		};
 	}
 
 	get() {
-		console.log(Cookies.get());
+
+	}
+
+	insert(row) {
+		return new Promise((resolve, reject) => {
+			// Map each column name to it's other info
+			let columns = {};
+			for (const column of this.columns) {
+				columns[column.name] = column;
+			}
+
+			console.log('columns', columns);
+
+			// Make sure each value in row is valid
+			for (const columnName of Object.keys(row)) {
+				if (typeof columns[columnName] === 'undefined') {
+					reject('Column "' + columnName + '" does not exist on table "' + this.name + '"!');
+					return;
+				}
+			}
+
+			// Go through each column to make sure the types are valid
+			for (const tableColumn of Object.keys(columns)) {
+				const columnData = columns[tableColumn];
+				if (!types[columnData.type].isValid(row[tableColumn])) {
+					reject('Column "' + insertColumn + '" is not of type "' + columnData.type + '"!');
+					return;
+				}
+			}
+
+			// Insert into rows
+			this.rows.push(row);
+		});
+	}
+
+	update() {
+
+	}
+
+	delete() {
+
+	}
+
+	serialize() {
+
+	}
+
+	static unserialize(string) {
+
 	}
 }
 
 
 /***/ }),
 /* 1 */
-/***/ (function(module, exports, __webpack_require__) {
-
-window.Cookies = __webpack_require__(2);
-const Table = __webpack_require__(0);
-
-window.crumbs = {
-	Table
-};
-
-
-/***/ }),
-/* 2 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_RESULT__;/*!
@@ -269,6 +329,106 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_RESULT__;/*!
 	return init(function () {});
 }));
 
+
+/***/ }),
+/* 2 */
+/***/ (function(module, exports, __webpack_require__) {
+
+window.Cookies = __webpack_require__(1);
+const Database = __webpack_require__(4);
+window.Crumbs = new Database();
+
+
+/***/ }),
+/* 3 */
+/***/ (function(module, exports) {
+
+module.exports = {
+	number: {
+		isValid: val => typeof val === 'number',
+		serialize: val => val.toString(),
+		unserialize: val => Number(val)
+	},
+	string: {
+		isValid: val => typeof val === 'string',
+		serialize: val => val,
+		unserialize: val => val
+	},
+	boolean: {
+		isValid: val => typeof val === 'boolean',
+		serialize: val => val.toString(),
+		unserialize: val => val === 'true'
+	}
+};
+
+
+/***/ }),
+/* 4 */
+/***/ (function(module, exports, __webpack_require__) {
+
+const Table = __webpack_require__(0);
+
+module.exports = class Database {
+
+	constructor(name = 'crumbs') {
+		this.name = name;
+		this.version = __webpack_require__(5).version;
+		this.tables = [];
+	}
+
+	createTable(options) {
+		const table = new Table(options);
+		this.tables.push(table);
+		return table;
+	}
+
+}
+
+
+/***/ }),
+/* 5 */
+/***/ (function(module, exports) {
+
+module.exports = {
+	"name": "crumbsdb",
+	"version": "1.0.0",
+	"description": "A back-end is very inefficient and causes delay. Store your data in cookies instead.",
+	"main": "index.js",
+	"scripts": {
+		"compile": "webpack ./index.js dist/crumbs.js",
+		"compile:watch": "webpack --watch ./index.js dist/crumbs.js",
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/michaelgira23/crumbsDB.git"
+	},
+	"keywords": [
+		"crumbsdb",
+		"crumbs",
+		"cookies"
+	],
+	"author": "Michael Gira",
+	"license": "MIT",
+	"bugs": {
+		"url": "https://github.com/michaelgira23/crumbsDB/issues"
+	},
+	"homepage": "https://github.com/michaelgira23/crumbsDB#readme",
+	"dependencies": {
+		"jquery": "^3.2.1",
+		"js-cookie": "^2.1.4",
+		"node-sql-parser": "0.0.1",
+		"node-sqlparser": "^1.0.2",
+		"simple-sql-parser": "^2.0.0-alpha.1",
+		"sql-parser": "^0.5.0",
+		"sqljs": "git://github.com/langpavel/node-sqljs.git"
+	},
+	"devDependencies": {
+		"bootstrap": "^4.0.0-alpha.6",
+		"typescript": "^2.1.6",
+		"webpack": "^2.6.1"
+	}
+};
 
 /***/ })
 /******/ ]);
