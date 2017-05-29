@@ -70,6 +70,7 @@
 /* 0 */
 /***/ (function(module, exports, __webpack_require__) {
 
+const { escapeValue } = __webpack_require__(6);
 const types = __webpack_require__(3);
 
 module.exports = class Table {
@@ -78,16 +79,7 @@ module.exports = class Table {
 		options = options || {};
 		this.name = options.name || 'UNNAMED_TABLE';
 		this.columns = options.columns || [];
-		this._rows = [];
-	}
-
-	get rows() {
-		return this._rows;
-	}
-
-	set rows(value) {
-		this._rows = value;
-		// @TODO: Do some logic and rewrite data into cookie
+		this.rows = [];
 	}
 
 	query() {
@@ -112,8 +104,6 @@ module.exports = class Table {
 			for (const column of this.columns) {
 				columns[column.name] = column;
 			}
-
-			console.log('columns', columns);
 
 			// Make sure each value in row is valid
 			for (const columnName of Object.keys(row)) {
@@ -147,6 +137,33 @@ module.exports = class Table {
 
 	serialize() {
 
+	}
+
+	serialize() {
+		// Serialize from the inside-out because we need to know the lengths of values
+
+		// Serialize columns
+		let columnsValue = '';
+		for (const column of this.columns) {
+			const nameValue = escapeValue('NAME', column.name);
+			const typeValue = escapeValue('TYPE', column.type);
+			columnsValue += escapeValue('COLUMN', nameValue + typeValue);
+		}
+		columnsValue = escapeValue('COLUMNS', columnsValue);
+
+		// Serialize rows
+		let rowsValue = '';
+		for (const row of this.rows) {
+			let rowValue = '';
+			for (const column of this.columns) {
+				const serializedValue = types[column.type].serialize(row[column.name]);
+				rowValue += escapeValue('VALUE', serializedValue);
+			}
+			rowsValue += escapeValue('ROW', rowValue);
+		}
+		rowsValue = escapeValue('ROWS', rowsValue);
+
+		return escapeValue('TABLE', columnsValue + rowsValue);
 	}
 
 	static unserialize(string) {
@@ -382,6 +399,19 @@ module.exports = class Database {
 		return table;
 	}
 
+	serialize() {
+		// Get tables
+		let tablesValue = '';
+		for (const table of this.tables) {
+			tablesValue += table.serialize();
+		}
+
+		// Prepend crumbsDB + version
+		const prefix = '[crumbsDB ' + this.version + ']';
+
+		return prefix + tablesValue;
+	}
+
 }
 
 
@@ -429,6 +459,39 @@ module.exports = {
 		"webpack": "^2.6.1"
 	}
 };
+
+/***/ }),
+/* 6 */
+/***/ (function(module, exports, __webpack_require__) {
+
+/**
+ * Converting a Crumbs database to a cookie and vice versa
+ */
+
+const types = __webpack_require__(3);
+
+function unserializeString(string) {
+	const startRegex = /{BEGIN_(.+):([0-9]+)}/;
+	const endRegex = /{END_(.+):([0-9]+)}/;
+
+	// Look for beginning of escaped value
+	const startIndex = string.search(startRegex);
+
+	// If no more escaped values, return string
+	if (startIndex < 0) return string;
+
+	// Check to see if there's an
+}
+
+function escapeValue(label, value) {
+	return '{BEGIN_' + label + ':' + value.length + '}' + value + '{END_' + label + '}';
+}
+
+module.exports = {
+	unserializeString,
+	escapeValue
+};
+
 
 /***/ })
 /******/ ]);

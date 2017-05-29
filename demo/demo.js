@@ -23,3 +23,4 @@ table.insert({
 });
 
 console.log('formatted table', table.getFormattedObject());
+console.log('serialized db', Crumbs.serialize());
