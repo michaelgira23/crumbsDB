@@ -82,19 +82,11 @@ module.exports = class Table {
 		this.rows = [];
 	}
 
-	query() {
-
-	}
-
 	getFormattedObject() {
 		return {
 			columns: this.columns,
 			rows: this.rows
 		};
-	}
-
-	get() {
-
 	}
 
 	insert(row) {
@@ -127,18 +119,6 @@ module.exports = class Table {
 		});
 	}
 
-	update() {
-
-	}
-
-	delete() {
-
-	}
-
-	serialize() {
-
-	}
-
 	serialize() {
 		// Serialize from the inside-out because we need to know the lengths of values
 
@@ -166,9 +146,6 @@ module.exports = class Table {
 		return escapeValue('TABLE', columnsValue + rowsValue);
 	}
 
-	static unserialize(string) {
-
-	}
 }
 
 
@@ -353,7 +330,7 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_RESULT__;/*!
 
 window.Cookies = __webpack_require__(1);
 const Database = __webpack_require__(4);
-window.Crumbs = new Database();
+window.Crumbs = Database;
 
 
 /***/ }),
@@ -383,6 +360,7 @@ module.exports = {
 /* 4 */
 /***/ (function(module, exports, __webpack_require__) {
 
+const { unserializeString } = __webpack_require__(6);
 const Table = __webpack_require__(0);
 
 module.exports = class Database {
@@ -410,6 +388,25 @@ module.exports = class Database {
 		const prefix = '[crumbsDB ' + this.version + ']';
 
 		return prefix + tablesValue;
+	}
+
+	static unserialize(string) {
+		return new Promise((resolve, reject) => {
+			const prefixRegex = /^\[crumbsDB ([0-9.]+)\]/;
+			const regexSearch = prefixRegex.exec(string);
+
+			if (regexSearch.length !== 2) {
+				reject('Cannot find crumbsDB header or version number!');
+				return;
+			}
+
+			const version = regexSearch[1];
+
+			const serializedDb = string.replace(prefixRegex, '');
+			const unserializedDb = unserializeString(serializedDb);
+
+			resolve(unserializedDb);
+		});
 	}
 
 }
@@ -471,16 +468,58 @@ module.exports = {
 const types = __webpack_require__(3);
 
 function unserializeString(string) {
-	const startRegex = /{BEGIN_(.+):([0-9]+)}/;
-	const endRegex = /{END_(.+):([0-9]+)}/;
+	// console.log('unserialize string', string);
+
+	const startRegex = /^{BEGIN_([A-Z]+):([0-9]+)}/;
+	const endRegex = /{END_([A-Z]+)}/;
 
 	// Look for beginning of escaped value
-	const startIndex = string.search(startRegex);
+	const startSearch = startRegex.exec(string);
 
 	// If no more escaped values, return string
-	if (startIndex < 0) return string;
+	if (startSearch === null || startSearch.length !== 3) {
+		return string;
+	}
 
-	// Check to see if there's an
+	const escapedValueName = startSearch[1];
+	const escapedValueLength = Number(startSearch[2]);
+
+	const endMarker = '{END_' + escapedValueName + '}';
+
+	const endMarkerIndex = string.indexOf(endMarker);
+
+	// If no end marker or in wrong location, it's not valid. Just return string.
+	if (endMarkerIndex !== startSearch[0].length + escapedValueLength) {
+		return string;
+	}
+
+	// Extract escaped value
+	const escapedValue = string.substr(startSearch[0].length, escapedValueLength);
+	const unserializedValue = unserializeString(escapedValue);
+
+	// Unserialize anything after the end marker
+	const escapedValueAfter = string.substring(endMarkerIndex + endMarker.length);
+	const unserializedAfter = unserializeString(escapedValueAfter);
+	const unserializedAfterName = Object.keys(unserializedAfter)[0];
+	const unserializedAfterValue = unserializedAfter[unserializedAfterName];
+
+	console.log('unserialized values', escapedValueName, unserializedValue, unserializedAfter);
+
+	let unserialized;
+
+	if (escapedValueName === unserializedAfterName) {
+		// If consecutive values are the same name, make array
+		unserialized = [
+			unserializedValue,
+			unserializedAfterValue
+		];
+	} else {
+		// If consecutive values are different, make object
+		unserialized = {};
+		unserialized[escapedValueName.toLowerCase()] = unserializedValue;
+		unserialized[unserializedAfterName] = unserializedAfterValue;
+	}
+	return unserialized;
 }
 
 function escapeValue(label, value) {

@@ -1,4 +1,5 @@
-const table = Crumbs.createTable({
+const database = new Crumbs();
+const table = database.createTable({
 	name: 'users',
 	columns: [
 		{
@@ -23,4 +24,9 @@ table.insert({
 });
 
 console.log('formatted table', table.getFormattedObject());
-console.log('serialized db', Crumbs.serialize());
+
+const serializedDB = database.serialize();
+console.log('serialized db', serializedDB);
+
+const unserializedDB = Crumbs.unserialize(serializedDB)
+	.then(console.log.bind(null, 'unserialized db'));
