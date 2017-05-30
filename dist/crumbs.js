@@ -63,94 +63,183 @@
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 2);
+/******/ 	return __webpack_require__(__webpack_require__.s = 4);
 /******/ })
 /************************************************************************/
 /******/ ([
 /* 0 */
 /***/ (function(module, exports, __webpack_require__) {
 
-const { escapeValue } = __webpack_require__(6);
-const types = __webpack_require__(3);
+/**
+ * Converting a Crumbs database to a cookie and vice versa
+ */
 
-module.exports = class Table {
+const types = __webpack_require__(1);
 
-	constructor(options) {
-		options = options || {};
-		this.name = options.name || 'UNNAMED_TABLE';
-		this.columns = options.columns || [];
-		this.rows = [];
+function unserializeString(string, array = false) {
+	// console.log('unserialize string', string);
+
+	const startRegex = /^([{\[])BEGIN_([A-Z]+):([0-9]+)([}\]])/;
+	const endRegex = /([{\[])END_([A-Z]+)([}\]])/;
+
+	let pointer = 0;
+
+	let unserialized;
+	if (array) {
+		unserialized = [];
+	} else {
+		unserialized = {};
 	}
 
-	getFormattedObject() {
-		return {
-			columns: this.columns,
-			rows: this.rows
-		};
+	// Loop through all nodes in the string
+	while (pointer < string.length) {
+		const remainingString = string.substring(pointer);
+
+		// Look for beginning of escaped value
+		const startSearch = startRegex.exec(remainingString);
+
+		// If no more escaped values, break out of loop
+		if (!startSearch) {
+			return remainingString;
+		}
+
+		// If RegEx search doesn't return expected properties, it's not valid
+		if (startSearch.length !== 5) {
+			return string;
+		}
+
+		// If start and end characters aren't the same, not valid; return string.
+		if ((startSearch[1] === '{' && startSearch[4] === ']') || (startSearch[1] === '[' && startSearch[4] === '}')) {
+			return string;
+		}
+
+		const beginMarker = startSearch[0];
+		const isArrayContainer = (startSearch[1] === '[');
+		const escapedValueName = startSearch[2];
+		const escapedValue = remainingString.substr(beginMarker.length, Number(startSearch[3]));
+
+		const endMarker = startSearch[1] + 'END_' + escapedValueName + startSearch[4];
+
+		// Check if the end marker is after specified character length
+		if (!remainingString.startsWith(endMarker, beginMarker.length + escapedValue.length)) {
+			return string;
+		}
+
+		// Recurse inside the escaped value to see if any more tags within it
+		const unserializedValue = unserializeString(escapedValue, isArrayContainer);
+
+		// If it's an array, push to it. Otherwise, add it to the object
+		if (array) {
+			// const firstKey = Object.keys(unserializedValue)[0];
+			unserialized.push(unserializedValue);
+		} else {
+			unserialized[escapedValueName.toLowerCase()] = unserializedValue;
+		}
+
+		// Move onto the sibling node after this escaped value
+		pointer += beginMarker.length + escapedValue.length + endMarker.length;
 	}
 
-	insert(row) {
-		return new Promise((resolve, reject) => {
-			// Map each column name to it's other info
-			let columns = {};
-			for (const column of this.columns) {
-				columns[column.name] = column;
-			}
+	return unserialized;
+}
 
-			// Make sure each value in row is valid
-			for (const columnName of Object.keys(row)) {
-				if (typeof columns[columnName] === 'undefined') {
-					reject('Column "' + columnName + '" does not exist on table "' + this.name + '"!');
-					return;
-				}
-			}
+function escapeValue(label, value, arrayContainer = false) {
+	const beginChar = arrayContainer ? '[' : '{';
+	const endChar = arrayContainer ? ']' : '}';
 
-			// Go through each column to make sure the types are valid
-			for (const tableColumn of Object.keys(columns)) {
-				const columnData = columns[tableColumn];
-				if (!types[columnData.type].isValid(row[tableColumn])) {
-					reject('Column "' + insertColumn + '" is not of type "' + columnData.type + '"!');
-					return;
-				}
-			}
+	const beginMarker = beginChar + 'BEGIN_' + label + ':' + value.length + endChar;
+	const endMarker = beginChar + 'END_' + label + endChar;
 
-			// Insert into rows
-			this.rows.push(row);
-		});
+	return beginMarker + value + endMarker;
+}
+
+module.exports = {
+	unserializeString,
+	escapeValue
+};
+
+
+/***/ }),
+/* 1 */
+/***/ (function(module, exports) {
+
+module.exports = {
+	number: {
+		isValid: val => typeof val === 'number',
+		serialize: val => val.toString(),
+		unserialize: val => Number(val)
+	},
+	string: {
+		isValid: val => typeof val === 'string',
+		serialize: val => val,
+		unserialize: val => val
+	},
+	boolean: {
+		isValid: val => typeof val === 'boolean',
+		serialize: val => val.toString(),
+		unserialize: val => val === 'true'
+	}
+};
+
+
+/***/ }),
+/* 2 */
+/***/ (function(module, exports, __webpack_require__) {
+
+const { unserializeString } = __webpack_require__(0);
+const Table = __webpack_require__(5);
+
+module.exports = class Database {
+
+	constructor(name = 'crumbs') {
+		this.name = name;
+		this.version = __webpack_require__(6).version;
+		this.tables = [];
+	}
+
+	createTable(options) {
+		const table = new Table(options);
+		this.tables.push(table);
+		return table;
 	}
 
 	serialize() {
-		// Serialize from the inside-out because we need to know the lengths of values
-
-		// Serialize columns
-		let columnsValue = '';
-		for (const column of this.columns) {
-			const nameValue = escapeValue('NAME', column.name);
-			const typeValue = escapeValue('TYPE', column.type);
-			columnsValue += escapeValue('COLUMN', nameValue + typeValue);
+		// Get tables
+		let tablesValue = '';
+		for (const table of this.tables) {
+			tablesValue += table.serialize();
 		}
-		columnsValue = escapeValue('COLUMNS', columnsValue);
 
-		// Serialize rows
-		let rowsValue = '';
-		for (const row of this.rows) {
-			let rowValue = '';
-			for (const column of this.columns) {
-				const serializedValue = types[column.type].serialize(row[column.name]);
-				rowValue += escapeValue('VALUE', serializedValue);
+		// Prepend crumbsDB + version
+		const prefix = '[crumbsDB ' + this.version + ']';
+
+		return prefix + tablesValue;
+	}
+
+	static unserialize(string) {
+		return new Promise((resolve, reject) => {
+			const prefixRegex = /^\[crumbsDB ([0-9.]+)\]/;
+			const regexSearch = prefixRegex.exec(string);
+
+			if (regexSearch.length !== 2) {
+				reject('Cannot find crumbsDB header or version number!');
+				return;
 			}
-			rowsValue += escapeValue('ROW', rowValue);
-		}
-		rowsValue = escapeValue('ROWS', rowsValue);
 
-		return escapeValue('TABLE', columnsValue + rowsValue);
+			const version = regexSearch[1];
+
+			const serializedDb = string.replace(prefixRegex, '');
+			const unserializedDb = unserializeString(serializedDb);
+
+			resolve(unserializedDb);
+		});
 	}
 
 }
 
 
 /***/ }),
-/* 1 */
+/* 3 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_RESULT__;/*!
@@ -325,95 +414,99 @@ var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_RESULT__;/*!
 
 
 /***/ }),
-/* 2 */
+/* 4 */
 /***/ (function(module, exports, __webpack_require__) {
 
-window.Cookies = __webpack_require__(1);
-const Database = __webpack_require__(4);
+window.Cookies = __webpack_require__(3);
+const Database = __webpack_require__(2);
 window.Crumbs = Database;
 
 
 /***/ }),
-/* 3 */
-/***/ (function(module, exports) {
-
-module.exports = {
-	number: {
-		isValid: val => typeof val === 'number',
-		serialize: val => val.toString(),
-		unserialize: val => Number(val)
-	},
-	string: {
-		isValid: val => typeof val === 'string',
-		serialize: val => val,
-		unserialize: val => val
-	},
-	boolean: {
-		isValid: val => typeof val === 'boolean',
-		serialize: val => val.toString(),
-		unserialize: val => val === 'true'
-	}
-};
-
-
-/***/ }),
-/* 4 */
+/* 5 */
 /***/ (function(module, exports, __webpack_require__) {
 
-const { unserializeString } = __webpack_require__(6);
-const Table = __webpack_require__(0);
+const { escapeValue } = __webpack_require__(0);
+const types = __webpack_require__(1);
 
-module.exports = class Database {
+module.exports = class Table {
 
-	constructor(name = 'crumbs') {
-		this.name = name;
-		this.version = __webpack_require__(5).version;
-		this.tables = [];
+	constructor(options) {
+		options = options || {};
+		this.name = options.name || 'UNNAMED_TABLE';
+		this.columns = options.columns || [];
+		this.rows = [];
 	}
 
-	createTable(options) {
-		const table = new Table(options);
-		this.tables.push(table);
-		return table;
+	getFormattedObject() {
+		return {
+			columns: this.columns,
+			rows: this.rows
+		};
+	}
+
+	insert(row) {
+		return new Promise((resolve, reject) => {
+			// Map each column name to it's other info
+			let columns = {};
+			for (const column of this.columns) {
+				columns[column.name] = column;
+			}
+
+			// Make sure each value in row is valid
+			for (const columnName of Object.keys(row)) {
+				if (typeof columns[columnName] === 'undefined') {
+					reject('Column "' + columnName + '" does not exist on table "' + this.name + '"!');
+					return;
+				}
+			}
+
+			// Go through each column to make sure the types are valid
+			for (const tableColumn of Object.keys(columns)) {
+				const columnData = columns[tableColumn];
+				if (!types[columnData.type].isValid(row[tableColumn])) {
+					reject('Column "' + insertColumn + '" is not of type "' + columnData.type + '"!');
+					return;
+				}
+			}
+
+			// Insert into rows
+			this.rows.push(row);
+		});
 	}
 
 	serialize() {
-		// Get tables
-		let tablesValue = '';
-		for (const table of this.tables) {
-			tablesValue += table.serialize();
+		// Serialize from the inside-out because we need to know the lengths of values
+
+		// Serialize columns
+		let columnsValue = '';
+		for (const column of this.columns) {
+			const nameValue = escapeValue('NAME', column.name);
+			const typeValue = escapeValue('TYPE', column.type);
+			columnsValue += escapeValue('COLUMN', nameValue + typeValue);
 		}
+		columnsValue = escapeValue('COLUMNS', columnsValue, true);
 
-		// Prepend crumbsDB + version
-		const prefix = '[crumbsDB ' + this.version + ']';
-
-		return prefix + tablesValue;
-	}
-
-	static unserialize(string) {
-		return new Promise((resolve, reject) => {
-			const prefixRegex = /^\[crumbsDB ([0-9.]+)\]/;
-			const regexSearch = prefixRegex.exec(string);
-
-			if (regexSearch.length !== 2) {
-				reject('Cannot find crumbsDB header or version number!');
-				return;
+		// Serialize rows
+		let rowsValue = '';
+		for (const row of this.rows) {
+			let rowValue = '';
+			for (const column of this.columns) {
+				const serializedValue = types[column.type].serialize(row[column.name]);
+				rowValue += escapeValue('VALUE', serializedValue);
 			}
+			rowsValue += escapeValue('ROW', rowValue, true);
+		}
+		rowsValue = escapeValue('ROWS', rowsValue, true);
 
-			const version = regexSearch[1];
-
-			const serializedDb = string.replace(prefixRegex, '');
-			const unserializedDb = unserializeString(serializedDb);
-
-			resolve(unserializedDb);
-		});
+		return escapeValue('TABLE', columnsValue + rowsValue);
 	}
 
 }
 
 
 /***/ }),
-/* 5 */
+/* 6 */
 /***/ (function(module, exports) {
 
 module.exports = {
@@ -456,81 +549,6 @@ module.exports = {
 		"webpack": "^2.6.1"
 	}
 };
-
-/***/ }),
-/* 6 */
-/***/ (function(module, exports, __webpack_require__) {
-
-/**
- * Converting a Crumbs database to a cookie and vice versa
- */
-
-const types = __webpack_require__(3);
-
-function unserializeString(string) {
-	// console.log('unserialize string', string);
-
-	const startRegex = /^{BEGIN_([A-Z]+):([0-9]+)}/;
-	const endRegex = /{END_([A-Z]+)}/;
-
-	// Look for beginning of escaped value
-	const startSearch = startRegex.exec(string);
-
-	// If no more escaped values, return string
-	if (startSearch === null || startSearch.length !== 3) {
-		return string;
-	}
-
-	const escapedValueName = startSearch[1];
-	const escapedValueLength = Number(startSearch[2]);
-
-	const endMarker = '{END_' + escapedValueName + '}';
-
-	const endMarkerIndex = string.indexOf(endMarker);
-
-	// If no end marker or in wrong location, it's not valid. Just return string.
-	if (endMarkerIndex !== startSearch[0].length + escapedValueLength) {
-		return string;
-	}
-
-	// Extract escaped value
-	const escapedValue = string.substr(startSearch[0].length, escapedValueLength);
-	const unserializedValue = unserializeString(escapedValue);
-
-	// Unserialize anything after the end marker
-	const escapedValueAfter = string.substring(endMarkerIndex + endMarker.length);
-	const unserializedAfter = unserializeString(escapedValueAfter);
-	const unserializedAfterName = Object.keys(unserializedAfter)[0];
-	const unserializedAfterValue = unserializedAfter[unserializedAfterName];
-
-	console.log('unserialized values', escapedValueName, unserializedValue, unserializedAfter);
-
-	let unserialized;
-
-	if (escapedValueName === unserializedAfterName) {
-		// If consecutive values are the same name, make array
-		unserialized = [
-			unserializedValue,
-			unserializedAfterValue
-		];
-	} else {
-		// If consecutive values are different, make object
-		unserialized = {};
-		unserialized[escapedValueName.toLowerCase()] = unserializedValue;
-		unserialized[unserializedAfterName] = unserializedAfterValue;
-	}
-	return unserialized;
-}
-
-function escapeValue(label, value) {
-	return '{BEGIN_' + label + ':' + value.length + '}' + value + '{END_' + label + '}';
-}
-
-module.exports = {
-	unserializeString,
-	escapeValue
-};
-
 
 /***/ })
 /******/ ]);

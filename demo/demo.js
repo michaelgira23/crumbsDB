@@ -23,6 +23,12 @@ table.insert({
 	isConfirmed: true
 });
 
+table.insert({
+	username: 'notmgira',
+	password: 'Gatherer3',
+	isConfirmed: false
+});
+
 console.log('formatted table', table.getFormattedObject());
 
 const serializedDB = database.serialize();
