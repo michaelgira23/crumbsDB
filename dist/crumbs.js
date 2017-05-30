@@ -195,12 +195,20 @@ module.exports = class Database {
 		this.name = name;
 		this.version = __webpack_require__(6).version;
 		this.tables = [];
+
+		console.log('Previous cookie value', Cookies.get('cdb-' + this.name));
+		this.updateCookie();
 	}
 
 	createTable(options) {
-		const table = new Table(options);
+		const table = new Table(this, options);
 		this.tables.push(table);
 		return table;
+	}
+
+	updateCookie() {
+		const expires = new Date(Date.now() + (2 ** 31 - 1));
+		Cookies.set('cdb-' + this.name, this.serialize(), { expires });
 	}
 
 	serialize() {
@@ -431,7 +439,8 @@ const types = __webpack_require__(1);
 
 module.exports = class Table {
 
-	constructor(options) {
+	constructor(db, options) {
+		this.db = db;
 		options = options || {};
 		this.name = options.name || 'UNNAMED_TABLE';
 		this.columns = options.columns || [];
@@ -472,6 +481,7 @@ module.exports = class Table {
 
 			// Insert into rows
 			this.rows.push(row);
+			this.db.updateCookie();
 		});
 	}
 
@@ -544,8 +554,6 @@ module.exports = {
 		"sqljs": "git://github.com/langpavel/node-sqljs.git"
 	},
 	"devDependencies": {
-		"bootstrap": "^4.0.0-alpha.6",
-		"typescript": "^2.1.6",
 		"webpack": "^2.6.1"
 	}
 };

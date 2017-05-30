@@ -33,8 +33,6 @@
     "sqljs": "git://github.com/langpavel/node-sqljs.git"
   },
   "devDependencies": {
-    "bootstrap": "^4.0.0-alpha.6",
-    "typescript": "^2.1.6",
     "webpack": "^2.6.1"
   }
 }

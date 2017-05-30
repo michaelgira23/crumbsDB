@@ -1,0 +1,17 @@
+{
+  "name": "crumbsdb-demo",
+  "version": "1.0.0",
+  "description": "Demo for crumbsDB. We need to run a server so the browser can save our cookies!",
+  "main": "demo-server.js",
+  "scripts": {
+    "start": "node demo-server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Michael Gira",
+  "license": "MIT",
+  "dependencies": {
+    "bootstrap": "^4.0.0-alpha.6",
+    "express": "^4.15.3",
+    "jquery": "^3.2.1"
+  }
+}
