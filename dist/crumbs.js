@@ -485,6 +485,36 @@ module.exports = class Table {
 		});
 	}
 
+	get(query) {
+		const rows = [];
+		for (const row of this.rows) {
+			if (this.evalCondition(row, query)) {
+				rows.push(row);
+			}
+		}
+		return rows;
+	}
+
+	update(query, newValues) {
+		const changeValues = Object.keys(newValues);
+		for (let row of this.rows) {
+			if (this.evalCondition(row, query)) {
+				console.log('change row');
+				// Set new values
+				for (const column of this.columns) {
+					if (changeValues.includes(column.name) && types[column.type].isValid(newValues[column.name])) {
+						row[column.name] = newValues[column.name];
+					}
+				}
+			}
+		}
+	}
+
+	evalCondition(row, query = true) {
+		// Sandbox the eval in an anonymous function to make it 100% safe, easy, secure, and fun for the whole family
+		return eval('(function(row) { return ' + query + '})')(row);
+	}
+
 	serialize() {
 		// Serialize from the inside-out because we need to know the lengths of values
 

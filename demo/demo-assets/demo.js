@@ -36,3 +36,7 @@ console.log('serialized db', serializedDB);
 
 const unserializedDB = Crumbs.unserialize(serializedDB)
 	.then(console.log.bind(null, 'unserialized db'));
+
+console.log('query get', table.get());
+console.log('query update', table.update('row.username === "mgira"', { hello: 'world', username: 'othermgira' }));
+console.log('query get', table.get());
