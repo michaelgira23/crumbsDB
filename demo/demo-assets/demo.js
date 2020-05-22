@@ -29,6 +29,12 @@ table.insert({
 	isConfirmed: false
 });
 
+table.insert({
+	username: 'adsf',
+	password: 'Gatherer3',
+	isConfirmed: false
+});
+
 console.log('formatted table', table.getFormattedObject());
 
 const serializedDB = database.serialize();
@@ -39,4 +45,6 @@ const unserializedDB = Crumbs.unserialize(serializedDB)
 
 console.log('query get', table.get());
 console.log('query update', table.update('row.username === "mgira"', { hello: 'world', username: 'othermgira' }));
+console.log('query get', table.get());
+console.log('query delete', table.delete('row.username === "notmgira"'));
 console.log('query get', table.get());

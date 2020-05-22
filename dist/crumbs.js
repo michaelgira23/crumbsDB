@@ -510,6 +510,14 @@ module.exports = class Table {
 		}
 	}
 
+	delete(query) {
+		for(let i = 0; i < this.rows; i++) {
+			if (this.evalCondition(this.rows[i], query)) {
+				this.rows.splice(i--, 1);
+			}
+		}
+	}
+
 	evalCondition(row, query = true) {
 		// Sandbox the eval in an anonymous function to make it 100% safe, easy, secure, and fun for the whole family
 		return eval('(function(row) { return ' + query + '})')(row);
